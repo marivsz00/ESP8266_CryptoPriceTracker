@@ -1,12 +1,14 @@
 package Crypto.Tracker;
 
 import com.formdev.flatlaf.FlatDarkLaf;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.*;
 import java.util.HashMap;
 
 
@@ -31,6 +33,8 @@ public class CryptoTrackerApp extends JFrame {
         setSize(600, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+//        loadSelectedCryptocurrencies();
+
         // Get cryptocurrency data from API
         CoingeckoAPI api = new CoingeckoAPI();
         try {
@@ -45,8 +49,11 @@ public class CryptoTrackerApp extends JFrame {
         cryptoList = new JList<>(cryptocurrencies.keySet().toArray(new String[cryptocurrencies.size()]));
         JScrollPane cryptoScrollPane = new JScrollPane(cryptoList);
 
-        selectedCryptoList = new JList<>();
+        selectedCryptoList = new JList<>(new DefaultListModel<>());
+
         JScrollPane selectedCryptoScrollPane = new JScrollPane(selectedCryptoList);
+
+        loadSelectedCrypto();
 
         nameLabel = new JLabel();
         symbolLabel = new JLabel();
@@ -90,6 +97,8 @@ public class CryptoTrackerApp extends JFrame {
                     if (!selectedModel.contains(selectedId)) {
                         if (selectedModel.size() < 4) {
                             selectedModel.addElement(selectedId);
+                            saveSelectedCrypto();
+                            //saving after selection
                         } else {
                             JOptionPane.showMessageDialog(CryptoTrackerApp.this,
                                     "You can only select up to 4 cryptocurrencies.",
@@ -127,6 +136,7 @@ public class CryptoTrackerApp extends JFrame {
             }
         });
 
+// ...
         selectedCryptoList.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -135,12 +145,11 @@ public class CryptoTrackerApp extends JFrame {
                     if (selectedIndex >= 0) {
                         DefaultListModel<String> model = (DefaultListModel<String>) selectedCryptoList.getModel();
                         model.removeElementAt(selectedIndex);
+                        saveSelectedCrypto();
                     }
                 }
             }
         });
-
-        selectedCryptoList.setModel(new DefaultListModel<>());
 
         UIManager.put("Button.arc", 0);
 
@@ -151,12 +160,10 @@ public class CryptoTrackerApp extends JFrame {
         String searchQuery = searchField.getText().toLowerCase();
         DefaultListModel<String> model = new DefaultListModel<>();
 
-        // Find exact match and add it to the model first
         if (cryptocurrencies.containsKey(searchQuery)) {
             model.addElement(searchQuery);
         }
 
-        // Add other matching cryptocurrencies to the model
         for (String id : cryptocurrencies.keySet()) {
             String[] data = cryptocurrencies.get(id);
             if (!id.equals(searchQuery) && (id.toLowerCase().contains(searchQuery) || data[0].toLowerCase().contains(searchQuery) || data[1].toLowerCase().contains(searchQuery))) {
@@ -165,6 +172,58 @@ public class CryptoTrackerApp extends JFrame {
         }
         cryptoList.setModel(model);
     }
+
+    private void saveSelectedCrypto() {
+    try (PrintWriter writer = new PrintWriter(new FileWriter("selectedCrypto.txt"))) {
+        DefaultListModel<String> model = (DefaultListModel<String>) selectedCryptoList.getModel();
+        for (int i = 0; i < model.getSize(); i++) {
+            writer.println(model.getElementAt(i));
+        }
+
+        String[] ids = new String[model.getSize()];
+        for (int i = 0; i < model.getSize(); i++) {
+            ids[i] = model.getElementAt(i);
+        }
+
+        updateSelectedCryptoList(ids);
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        }
+    }
+    private void loadSelectedCrypto() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("selectedCrypto.txt"))) {
+            DefaultListModel<String> model = (DefaultListModel<String>) selectedCryptoList.getModel();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (cryptocurrencies.containsKey(line)) {
+                    model.addElement(line);
+                }
+            }
+            String[] ids = new String[model.getSize()];
+            for (int i = 0; i < model.getSize(); i++) {
+                ids[i] = model.getElementAt(i);
+            }
+            updateSelectedCryptoList(ids);
+
+        } catch (FileNotFoundException e) {
+            // Ignore this exception as it just means that the file has not been created yet
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void updateSelectedCryptoList(String[] ids) {
+        DefaultListModel<String> model = new DefaultListModel<>();
+        for (String id : ids) {
+            if (cryptocurrencies.containsKey(id)) {
+                model.addElement(id);
+            }
+        }
+        selectedCryptoList.setModel(model);
+    }
+
 }
 
 

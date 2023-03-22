@@ -36,7 +36,7 @@ public class CoingeckoAPI {
 
         }
 
-        System.out.println(cryptoList);
+//        System.out.println(cryptoList);
     }
 
 
